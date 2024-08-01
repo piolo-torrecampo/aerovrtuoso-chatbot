@@ -10,8 +10,8 @@ Requirements:
 ```docker run --name nms -d -p 1935:1935 -p 8000:8000 -p 8443:8443 illuspas/node-media-server```
 
 **Configure OBS Studio**
-- Go to File -> Settings -> Stream
-- Fill the following parameters
+1. Go to File -> Settings -> Stream
+2. Fill the following parameters
   - Server: rtmp://localhost/live
   - Stream Key: STREAM_NAME
   
@@ -20,7 +20,7 @@ Requirements:
 ### REDIS SERVER
 ```cd ./redis && docker-compose up```
 
-### Launch Web App
-```npm install```
-```npm run dev```
+### LUANCH WEB APP
+1. ```npm install```
+2. ```npm run dev```
 
