@@ -2,7 +2,7 @@
 
 **Note: Luanch the servers first.**
 
-### Stream Server
+### STREAM SERVER
 Requirements:
 - OBS Studio
 - Docker Container: illuspas/node-media-server
@@ -14,16 +14,13 @@ Requirements:
 - Fill the following parameters
   - Server: rtmp://localhost/live
   - Stream Key: STREAM_NAME
+  
 ![alt text](./ReadMe%20Images/obs_configs.png)
 
-### Redis Server
+### REDIS SERVER
 ```cd ./redis && docker-compose up```
 
-### Starting the Web App
-
-**Installing Packages**
+### Launch Web App
 ```npm install```
-
-**Luanch Web App**
 ```npm run dev```
 
