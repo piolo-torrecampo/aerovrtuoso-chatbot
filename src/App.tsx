@@ -3,16 +3,16 @@ import { useState, useEffect } from 'react';
 import axios from "axios";
 import PrefabList from './components/PrefabList';
 import Logo from './components/Logo';
-import { Button } from './components/ui/button';
-import { IoSend } from 'react-icons/io5';
-import { Input } from './components/ui/input';
 import StreamPlayer from './components/StreamPlayer';
 import Summary from './components/Summary';
 import UserPrompt from './components/UserPrompt';
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-
+import { Button } from './components/ui/button';
+import { IoSend } from 'react-icons/io5';
+import { Input } from './components/ui/input';
 
 function App() {
   const [userInstruction, setUserInstruction] = useState('');
@@ -21,38 +21,44 @@ function App() {
   const [scenePrefabs, setScenePrefabs] = useState<string[]>([]);
   const [message, setMessage] = useState(null);
   const reponseUrl = "http://localhost:8008/response";
+  const llmUrl = "http://localhost:8008/set/prompt";
 
-  let date = new Date();
-  let time = date.toTimeString().split(' ');
+  const date = new Date();
+  const time = date.toTimeString().split(' ');
 
   useEffect(() => {
-    axios.get(reponseUrl).then((response) => {
-      const currentReponse = response.data.response
-      setMessage(currentReponse.message);
+    axios.get(reponseUrl)
+      .then((response) => {
+        const currentResponse = response.data.response;
+  
+        setMessage(currentResponse.message);
+  
+        const splittedAvailablePrefabs = currentResponse.available_prefabs.split(',');
+        const splittedCurrentPrefabs = currentResponse.current_object.split(',');
+  
+        setAvailablePrefabs(splittedAvailablePrefabs);
+        setScenePrefabs(splittedCurrentPrefabs);
+  
+        const responseObj = {
+          message: currentResponse.message,
+          type: "fromUnity",
+          timeStamp: time[0].toString()
+        };
+  
+        if (message !== null) {
+          setPrompts([...prompts, responseObj]);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
+  }, []);
 
-      const splittedAvailablePrefabs = currentReponse.available_prefabs.split(',')
-      const splittedCurrentPrefabs = currentReponse.current_object.split(',')
-
-      setAvailablePrefabs(splittedAvailablePrefabs);
-      setScenePrefabs(splittedCurrentPrefabs);
-
-      const reponseObj = {
-        message: currentReponse.message,
-        type: "fromUnity",
-        timeStamp: time[0].toString()
-      }
-
-      if (message != null) {
-        setPrompts([...prompts, reponseObj]);
-      }
-    })
-  }, [])
-
-  const handleUserInput = (e) => {
+  const handleUserInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInstruction(e.target.value);
   }
 
-  const pastePrefabValue = (item) => {
+  const pastePrefabValue = (item: string) => {
     if(userInstruction[userInstruction.length-1] == ' ') {
       setUserInstruction(userInstruction + item.toString().trim());
     }else{
@@ -61,16 +67,37 @@ function App() {
     
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
+
     if (userInstruction.trim()) {
+      setUserInstruction('');
+
       const userPrompt = {
         message: userInstruction.trim(),
         type: "fromUser",
         timeStamp: time[0].toString()
+      };
+      
+      setPrompts(prevPrompts => [...prevPrompts, userPrompt])
+
+      try {
+        await axios.post(llmUrl, { prompt : userInstruction.trim() })
+          .then(response => {
+            console.log(response.data)
+            const result = response.data.instruction.prompt
+            const responseObj = {
+              message: result,
+              type: "fromUnity",
+              timeStamp: time[0].toString()
+            };
+
+            setPrompts(prevPrompts => [...prevPrompts, responseObj])
+            setMessage(result);
+          })
+      } catch (error) {
+        console.error("Error posting data:", error);
       }
-      setPrompts([...prompts, userPrompt]);
-      setUserInstruction('');
     }
   }
 

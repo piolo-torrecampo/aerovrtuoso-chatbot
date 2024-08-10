@@ -57,12 +57,18 @@ class UnityResponseObject(BaseModel):
     current_object: str
     available_prefabs: str
 
+class UserPrompt(BaseModel):
+    prompt: str
+
 currentInstruction = {
     "action": "",
     "parameters": ""
 }
 
 responseFromUnity = {"response": ""}
+prompt = {
+    "instruction": ""
+}
 
 axisList = ['x', 'y', 'z', 'reset', 'default']
 scaleList = ['x_up', 'y_up', 'z_up', 'x_down', 'y_down', 'z_down', 'multiply', 'increase', 'decrease', 'reset', 'default']
@@ -229,6 +235,16 @@ async def set_response(reponse_obj: UnityResponseObject):
     reponse_params = dict(reponse_obj)
     responseFromUnity['response'] = reponse_params
     return responseFromUnity
+
+@app.post("/set/prompt")
+async def set_response(reponse_obj: UserPrompt):
+    reponse_params = dict(reponse_obj)
+    prompt['instruction'] = reponse_params
+    return prompt
+
+@app.get("/prompt")
+async def set_response():
+    return prompt
 
 @app.get("/response")
 async def get_response():

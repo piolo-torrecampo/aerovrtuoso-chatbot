@@ -1,4 +1,4 @@
-import aerovrtuosoLogo from '../assets/light_mode_logo.png';
+import aerovrtuosoLogo from '../assets/images/light_mode_logo.png';
 
 const Logo = () => {
   return (
