@@ -36,7 +36,6 @@ class MoveObject(BaseModel):
 
 class RemoveObject(BaseModel):
     prefab: str
-    value: str
 
 class ReplaceObject(BaseModel):
     prefab: str
@@ -54,7 +53,7 @@ class RotateObject(BaseModel):
 
 class UnityResponseObject(BaseModel):
     message: str
-    current_object: str
+    current_objects: str
     available_prefabs: str
 
 class UserPrompt(BaseModel):
@@ -141,27 +140,26 @@ async def set_move(move_obj: MoveObject):
                 "success": False,
                 "error": str(e)
             }
+
 @app.post("/set/remove")
 async def set_remove(remove_obj: RemoveObject):
     remove_params = dict(remove_obj)
-    if not remove_params['value'].isdigit():
-        raise HTTPException(status_code=400, detail="Value should be a number.")
-    else:
-        currentInstruction['action'] = "remove"
-        currentInstruction['parameters'] = remove_params
-        
-        try:
-            redis_conn.rpush('instruction', json.dumps(currentInstruction))
-            return {
-                "success": True,
-                "message": "Pushed to Redis Queue",
-                "payload": currentInstruction
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+
+    currentInstruction['action'] = "remove"
+    currentInstruction['parameters'] = remove_params
+    
+    try:
+        redis_conn.rpush('instruction', json.dumps(currentInstruction))
+        return {
+            "success": True,
+            "message": "Pushed to Redis Queue",
+            "payload": currentInstruction
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @app.post("/set/replace")
 async def set_replace(replace_obj: ReplaceObject):
@@ -231,20 +229,10 @@ async def set_rotate(rotate_obj: RotateObject):
             }
 
 @app.post("/set/response")
-async def set_response(reponse_obj: UnityResponseObject):
-    reponse_params = dict(reponse_obj)
-    responseFromUnity['response'] = reponse_params
+async def set_response(response_obj: UnityResponseObject):
+    response_params = dict(response_obj)
+    responseFromUnity['response'] = response_params
     return responseFromUnity
-
-@app.post("/set/prompt")
-async def set_response(reponse_obj: UserPrompt):
-    reponse_params = dict(reponse_obj)
-    prompt['instruction'] = reponse_params
-    return prompt
-
-@app.get("/prompt")
-async def set_response():
-    return prompt
 
 @app.get("/response")
 async def get_response():

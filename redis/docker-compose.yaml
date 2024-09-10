@@ -6,7 +6,9 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
-
+    networks:
+      - network-bridge
+      
   server:
     container_name: server
     build:
@@ -19,3 +21,33 @@ services:
     environment:
       - PORT=8008      
     entrypoint: /start-reload.sh
+    networks:
+      - network-bridge
+  
+  llm:
+    container_name: llm
+    build:
+      context: .
+      dockerfile: dockerfile-llm
+    volumes:
+      - ./llm:/app/
+    ports:
+      - "8009:8009"
+    environment:
+      - PORT=8009      
+    entrypoint: /start-reload.sh
+    networks:
+      - network-bridge
+  
+  stream:
+    image: illuspas/node-media-server
+    container_name: stream
+    ports:
+      - "1935:1935"
+      - "8000:8000"
+      - "8443:8443"
+    restart: unless-stopped
+  
+networks:
+  network-bridge:
+    driver: bridge
