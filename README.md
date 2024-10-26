@@ -1,6 +1,7 @@
 # Aero VR Tuoso - Chatbot
 
 **Project Name**: Design of a Dynamic Scenario-Based Virtual Training Simulation for Small Aircraft Engine Maintenance
+
 **Description**: The project design aims to design an algorithm based on the Large Language Model (LLM) in a dynamic scenario generation for Virtual Reality (VR) that will be utilized by the aircraft maintenance trainees.
 
 **Note: Luanch the servers first.**
