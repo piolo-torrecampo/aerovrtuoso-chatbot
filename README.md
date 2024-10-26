@@ -1,4 +1,6 @@
-# Aero VR Tuoso
+# Aero VR Tuoso - Chatbot
+
+Project Name: Design of a Dynamic Scenario-Based Virtual Training Simulation for Small Aircraft Engine Maintenance
 
 **Note: Luanch the servers first.**
 
