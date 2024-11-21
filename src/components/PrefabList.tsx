@@ -18,8 +18,9 @@ interface UpdatedPrefabs {
 }
 
 const PrefabList: React.FC<UpdatedPrefabs> = ({ prefabs, onSelectPrefab }) => {
-  const handleButtonClick = (e) => {
+  const handleButtonClick = async (e) => {
     onSelectPrefab(e.target.value);
+    await navigator.clipboard.writeText(e.target.value);
   };
 
   return (
