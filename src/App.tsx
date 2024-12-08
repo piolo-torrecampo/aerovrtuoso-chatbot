@@ -19,41 +19,67 @@ function App() {
   const [prompts, setPrompts] = useState<object[]>([]);
   const [availablePrefabs, setAvailablePrefabs] = useState<string[]>([]);
   const [scenePrefabs, setScenePrefabs] = useState<string[]>([]);
-  const [message, setMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [llmStatus, setLlmStatus] = useState(false)
+  const [unityStatus, setUnityStatus] = useState(false)
   const responseUrl = "http://localhost:8008/response";
+  const llmStatusUrl = "http://localhost:8008/llm_status";
   const llmUrl = "http://localhost:8009/set/prompt";
 
-  const date = new Date();
 
   useEffect(() => {
-    axios.get(responseUrl)
-      .then((response) => {
-        const currentResponse = response.data.response;
+    const fetchData = async () => {
+      if (!unityStatus) {
+        try {
+          // Fetch the first API (responseUrl)
+          const response = await axios.get(responseUrl);
+          const currentResponse = response.data.response; // Assign to the global variable
 
-        //setMessage(currentResponse.message);
-        
-        const availablePrefabs = currentResponse.available_prefabs;
-        const currentObjects = currentResponse.current_objects;
+          if (currentResponse) {
+            // Process the response
+            const availablePrefabs = currentResponse.available_prefabs;
+            const currentObjects = currentResponse.current_objects;
 
-        const splitAvailablePrefabs = availablePrefabs.split(', ');
-        const splitCurrentObjects = currentObjects.split(', ');
-        
-        setAvailablePrefabs(splitAvailablePrefabs)
-        setScenePrefabs(splitCurrentObjects);
-  
-        const responseObj = {
-          message: currentResponse.message,
-          type: "fromUnity",
-          timeStamp: new Date().toTimeString().split(' ')[0].toString()
-        };
-  
-        //if (message !== null) {
-          setPrompts([...prompts, responseObj]);
-        //}
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+            setAvailablePrefabs(availablePrefabs.split(', '));
+            setScenePrefabs(currentObjects.split(', '));
+
+            const responseObj = {
+              message: currentResponse.message,
+              type: "fromUnity",
+              timeStamp: new Date().toTimeString().split(' ')[0].toString(),
+            };
+
+            setUnityStatus(true);
+            setPrompts([...prompts, responseObj]);
+          }
+        } catch (error) {
+          console.error("Error fetching Unity data:", error);
+        }
+      }
+
+      if (!llmStatus) {
+        try {
+          // Fetch the second API (llmStatusUrl)
+          const status = await axios.get(llmStatusUrl);
+          const llmStatusResponse = status.data.llmStatus;
+
+          if (llmStatusResponse) {
+            setLlmStatus(true);
+          }
+        } catch (error) {
+          console.error("Error fetching LLM status:", error);
+        }
+      }
+    };
+
+    // Example of calling the fetchData function
+    fetchData();
+
+    // Set up polling (every 5 seconds)
+    const interval = setInterval(fetchData, 5000);
+
+    // To stop the interval when certain conditions are met
+    clearInterval(interval);
   }, []);
 
   const handleUserInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +98,7 @@ function App() {
     e.preventDefault();
     if (userInstruction.trim()) {
       setUserInstruction('');
+      setLoading(true);
 
       const userPrompt = {
         message: userInstruction.trim(),
@@ -84,37 +111,48 @@ function App() {
       try {
         await axios.post(llmUrl, { prompt : userInstruction.trim() })
           .then(response => {
-            const parsedData = JSON.parse(response.data);
-            console.log(parsedData)
-
-            const availablePrefabs = parsedData.response.available_prefabs;
-            const currentObjects = parsedData.response.current_objects;
-
-            const splitAvailablePrefabs = availablePrefabs.split(', ');
-            const splitCurrentObjects = currentObjects.split(', ');
+            console.log(response)
+            const parsedData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            console.log(parsedData);
             
-            setAvailablePrefabs(splitAvailablePrefabs)
-            setScenePrefabs(splitCurrentObjects);
+            if (parsedData.response && parsedData.response.available_prefabs && parsedData.response.current_objects) {
+              const availablePrefabs = parsedData.response.available_prefabs;
+              const currentObjects = parsedData.response.current_objects;
 
-            const responseObj = {
-              message: parsedData.response.message,
-              type: "fromUnity",
-              timeStamp: new Date().toTimeString().split(' ')[0].toString()
-            };
+              const splitAvailablePrefabs = availablePrefabs.split(', ');
+              const splitCurrentObjects = currentObjects.split(', ');
+              
+              setAvailablePrefabs(splitAvailablePrefabs)
+              setScenePrefabs(splitCurrentObjects);
 
-            setPrompts(prevPrompts => [...prevPrompts, responseObj]);
+              const responseObj = {
+                message: parsedData.response.message,
+                type: "fromUnity",
+                timeStamp: new Date().toTimeString().split(' ')[0].toString()
+              };
+
+              setPrompts(prevPrompts => [...prevPrompts, responseObj]);
+            } else {
+              const responseObj = {
+                message: parsedData.response.message,
+                type: "fromLlm",
+                timeStamp: new Date().toTimeString().split(' ')[0].toString()
+              };
+
+              setPrompts(prevPrompts => [...prevPrompts, responseObj]);
+            }
           })
       } catch (error) {
         console.error("Error posting data:", error);
+      } finally {
+        setLoading(false); // Stop loading
       }
     }
   }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSubmit(e);
-    }
-  };
+  const Spinner = () => (
+    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white bg-opacity-75"></div>
+  );
 
   const excludedKeywords = [
     'snap_point',
@@ -167,6 +205,8 @@ function App() {
         <CardHeader>
           <CardTitle><Logo /></CardTitle>
           <CardDescription>DESIGN OF A DYNAMIC SCENARIO-BASED VIRTUAL TRAINING SIMULATION FOR SMALL AIRCRAFT ENGINE MAINTENANCE</CardDescription>
+          <CardDescription>Unity: { unityStatus ? 'Connected' : 'Loading...'}</CardDescription>
+          <CardDescription>LLM: { llmStatus ? 'Connected' : 'Loading...'}</CardDescription>
         </CardHeader>
         <CardContent className='flex justify-center w-full'>
           <Tabs defaultValue="scene" className="w-full">
@@ -195,8 +235,12 @@ function App() {
       </Card>
       <Card className='col-span-9 row-span-4 p-2 shadow-md flex flex-col gap-2'>
         <div className='flex flex-row justify-center gap-x-2'>
-          <Input  className="h-12" id="inputbox" placeholder='Enter your instruction here here.' value={userInstruction} onChange={handleUserInput} onKeyDown={handleKeyPress}/>
-          <Button className='h-12 w-12' onClick={handleSubmit}><IoSend /></Button>
+          <Input  className="h-12" id="inputbox" placeholder='Enter your instruction here here.' value={userInstruction} onChange={handleUserInput}/>
+          <Button className='h-12 w-12' onClick={handleSubmit}>
+            {
+              loading ? <Spinner /> : <IoSend />
+            }
+          </Button>
         </div>
         <ScrollArea className='h-full overflow-auto'>
           {

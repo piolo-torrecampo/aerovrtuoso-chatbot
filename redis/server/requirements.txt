@@ -1,4 +1,0 @@
-redis
-rq
-python-dotenv
-langchain-openai

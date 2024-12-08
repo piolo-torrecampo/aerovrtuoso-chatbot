@@ -1,0 +1,14 @@
+langchain_huggingface
+peft 
+evaluate 
+sentencepiece 
+scikit-learn 
+accelerate 
+bitsandbytes 
+transformers 
+trl 
+tqdm 
+pandas 
+matplotlib
+langchain
+python-dotenv

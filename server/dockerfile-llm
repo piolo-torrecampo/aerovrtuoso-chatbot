@@ -1,0 +1,10 @@
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9-slim
+
+WORKDIR /llm
+
+COPY ./llm ./app
+
+RUN mkdir -p /writable/tmp && chmod 777 /writable/tmp
+ENV TMPDIR=/writable/tmp
+
+RUN pip install --no-cache-dir --upgrade -r ./app/requirements.txt

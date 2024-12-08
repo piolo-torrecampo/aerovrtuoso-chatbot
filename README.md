@@ -168,3 +168,6 @@ prefab | string | 3d object name under resources folder
 direction | string | direction of the next movement of the object
 object_to_replace | string| name of old object
 
+
+##### Helpful Commands
+`docker-compose down && docker-compose up --build --force-recreate --no-deps llm`
