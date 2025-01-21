@@ -265,51 +265,186 @@ def full_invoke(prompt):
     start_time = time.time()
     response = route(prompt)
     print(f"LLM Duration: {time.time() - start_time}")
-
+    
 def check_keyword(prompt):
-    keywords = [
-     "spawn", 
-     "insert", 
-     "add", 
-     "put", 
-     "place", 
-     "move", 
-     "push", 
-     "displace", 
-     "offset", 
-     "replace", 
-     "substitute", 
-     "rotate", 
-     "tilt", 
-     "turn", 
-     "remove", 
-     "delete", 
-     "banish"
-    ]
+    splitted_prompt = prompt.lower().split(' ')
+    
+    keyword_categories = {
+        "spawn": ["spawn", "insert", "add", "put", "place"],
+        "move": ["move", "push", "displace", "offset"],
+        "replace": ["replace", "substitute"],
+        "rotate": ["rotate", "tilt", "turn"],
+        "remove": ["remove", "delete", "banish"]
+    }
+    
+    for word in splitted_prompt:
+        word_lower = word.lower()
+        for category, keywords in keyword_categories.items():
+            if word_lower in keywords:
+                return True, category
+    
+    return False, None 
 
-    if any(word in prompt.lower() for word in keywords):
-        return True
-    else:
+def check_available(object): 
+    try:
+        # Make a GET request to fetch the current prefabs
+        response = requests.get(os.getenv("API_URL") + "response")
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        
+        # Parse the response JSON and get the current objects
+        response_json = response.json()  # Ensure the response is in JSON format
+        objects = response_json["response"]["available_prefabs"].split(", ")
+
+        print(objects)
+
+        return object in objects
+    except Exception as e:
+        print(f"Error in check_prefab: {e}")
         return False
+
+def check_prefab(object): 
+    try:
+        # Make a GET request to fetch the current prefabs
+        response = requests.get(os.getenv("API_URL") + "response")
+        print(response)
+
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        
+        # Parse the response JSON and get the current objects
+        response_json = response.json()  # Ensure the response is in JSON format
+        objects = response_json["response"]["current_objects"].split(", ")
+
+        print(objects)
+
+        return object in objects
+    except Exception as e:
+        print(f"Error in check_prefab: {e}")
+        return False
+    
+def check_direction(splitted_prompt):
+    directions = ["left", "right", "front", "back", "top", "bottom"]
+    return any(word in directions for word in splitted_prompt)
+
+def check_axis(splitted_prompt):
+    axes = ['x', 'y', 'z']
+    return any(word in axes for word in splitted_prompt)
+
+def check_value(splitted_prompt):
+    pass
 
 # endpoint
 class UserPrompt(BaseModel):
     prompt: str
 
-@app.post("/set/prompt")
-async def set_response(response_obj: UserPrompt):
-    if(check_keyword(response_obj.prompt)):
-        result = full_invoke(response_obj.prompt)
-        
+def generate_response(status, result, prompt): 
+    if(status): 
+        result = full_invoke(prompt)
+            
         time.sleep(5)
 
         response = requests.get(os.getenv("API_URL") + "response")
         return response.content
     else:
-        data = {
-            "response": {
-                "message": "Invalid action. Please specify an action."
-            }  
-        }
+        return result
 
-        return data
+def format_missing_items(items):
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    return ', '.join(items[:-1]) + f", and {items[-1]}"
+
+@app.post("/set/prompt")
+async def set_response(response_obj: UserPrompt):
+    prompt = response_obj.prompt
+    category_status, category = check_keyword(prompt)
+
+    data = {"response": {"message": ""}}
+    missing_items = []
+
+    def format_response(action, missing_items):
+        items_str = format_missing_items(missing_items)
+        data["response"]["message"] += f"{action} Action: Please specify {items_str} or add one."
+
+    if category_status:
+        splitted_prompt = prompt.lower().split(' ')
+
+        # Define checks for each category
+        if category == "spawn":
+            prefab_status = check_available(splitted_prompt[1])
+            reference_prefab_status = check_prefab(splitted_prompt[-1])
+            direction_status = check_direction(splitted_prompt)
+
+            if not prefab_status:
+                missing_items.append("new prefab")
+            if not reference_prefab_status:
+                missing_items.append("new reference prefab")
+            if not direction_status:
+                missing_items.append("direction")
+
+            if missing_items:
+                format_response("Spawn", missing_items)
+                return generate_response(False, data, prompt)
+            else:
+                return generate_response(True, {"message": "Spawn action successful."}, prompt)
+
+        elif category == "move":
+            prefab = check_prefab(splitted_prompt[1])
+            direction_status = check_direction(splitted_prompt)
+
+            if not prefab:
+                missing_items.append("new prefab")
+            if not direction_status:
+                missing_items.append("direction")
+
+            if missing_items:
+                format_response("Move", missing_items)
+                return generate_response(False, data, prompt)
+            else:
+                return generate_response(True, {"message": "Move action successful."}, prompt)
+
+        elif category == "replace":
+            replace_prefab = check_prefab(splitted_prompt[1])
+            prefab = check_available(splitted_prompt[-1])
+
+            if not prefab:
+                missing_items.append("new prefab")
+            if not replace_prefab:
+                missing_items.append("new replacement prefab")
+
+            if missing_items:
+                format_response("Replace", missing_items)
+                return generate_response(False, data, prompt)
+            else:
+                return generate_response(True, {"message": "Replace action successful."}, prompt)
+
+        elif category == "rotate":
+            prefab = check_prefab(splitted_prompt[1])
+            check_axis_status = check_axis(splitted_prompt)
+
+            if not prefab:
+                missing_items.append("new prefab")
+            if not check_axis_status:
+                missing_items.append("valid axis")
+
+            if missing_items:
+                format_response("Rotate", missing_items)
+                return generate_response(False, data, prompt)
+            else:
+                return generate_response(True, {"message": "Rotate action successful."}, prompt)
+
+        elif category == "remove":
+            prefab = check_prefab(splitted_prompt[1])
+
+            if not prefab:
+                missing_items.append("new prefab")
+
+            if missing_items:
+                format_response("Remove", missing_items)
+                return generate_response(False, data, prompt)
+            else:
+                return generate_response(True, {"message": "Remove action successful."}, prompt)
+
+    else:
+        data["response"]["message"] = "Invalid action. Please specify a valid action."
+        return generate_response(False, data, prompt)

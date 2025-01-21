@@ -51,16 +51,16 @@ class RotateObject(BaseModel):
     axis: str
     value: str
 
-class UnityResponseObject(BaseModel):
-    message: str
-    current_objects: str
-    available_prefabs: str
-
 class UserPrompt(BaseModel):
     prompt: str
 
 class StatusRequest(BaseModel):
     status: bool
+
+class UnityResponseObject(BaseModel):
+    message: str
+    current_objects: str
+    available_prefabs: str
 
 currentInstruction = {
     "action": "",
